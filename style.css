@@ -311,6 +311,8 @@ a { color: var(--accent-light); text-decoration: none; }
 .pr-level.intermediate { background: rgba(59,130,246,0.2); color: var(--blue); }
 .pr-level.advanced { background: rgba(124,58,237,0.2); color: var(--accent-light); }
 .pr-level.elite { background: rgba(245,158,11,0.2); color: var(--orange); }
+.pr-caption { color: var(--muted); font-size: 12px; margin-top: 4px; font-style: italic; }
+.pr-ratio { background: rgba(124,58,237,0.15); color: var(--accent-light); padding: 1px 7px; border-radius: 5px; font-size: 11px; margin-left: 6px; }
 .leaderboard-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
 .lb-rank { font-size: 20px; font-weight: 900; min-width: 32px; }
 .lb-rank.gold { color: #fbbf24; }

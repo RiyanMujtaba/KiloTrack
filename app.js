@@ -75,29 +75,53 @@ function greet() {
   return 'Good evening';
 }
 function strengthLevel(exercise, est1rm) {
+  const bw = S.profile.bodyWeight || 0;
   const ex = exercise.toLowerCase();
-  if (ex.includes('bench')) {
-    if (est1rm >= 140) return { label:'Elite', cls:'elite' };
-    if (est1rm >= 100) return { label:'Advanced', cls:'advanced' };
-    if (est1rm >= 60)  return { label:'Intermediate', cls:'intermediate' };
-    return { label:'Beginner', cls:'beginner' };
-  }
-  if (ex.includes('squat')) {
-    if (est1rm >= 160) return { label:'Elite', cls:'elite' };
-    if (est1rm >= 120) return { label:'Advanced', cls:'advanced' };
-    if (est1rm >= 80)  return { label:'Intermediate', cls:'intermediate' };
-    return { label:'Beginner', cls:'beginner' };
-  }
-  if (ex.includes('deadlift')) {
-    if (est1rm >= 200) return { label:'Elite', cls:'elite' };
-    if (est1rm >= 150) return { label:'Advanced', cls:'advanced' };
-    if (est1rm >= 100) return { label:'Intermediate', cls:'intermediate' };
-    return { label:'Beginner', cls:'beginner' };
-  }
-  if (est1rm >= 120) return { label:'Elite', cls:'elite' };
-  if (est1rm >= 80)  return { label:'Advanced', cls:'advanced' };
-  if (est1rm >= 40)  return { label:'Intermediate', cls:'intermediate' };
-  return { label:'Beginner', cls:'beginner' };
+
+  // Bodyweight ratio thresholds per lift
+  // If no bodyweight set, fall back to absolute kg thresholds
+  const ratioTiers = {
+    bench:    [0.75, 1.0, 1.25, 1.5],   // [beginner, intermediate, advanced, elite] × BW
+    squat:    [1.0,  1.25, 1.5, 2.0],
+    deadlift: [1.0,  1.5,  2.0, 2.5],
+    overhead: [0.5,  0.65, 0.85, 1.0],
+    row:      [0.75, 1.0,  1.25, 1.5],
+  };
+  const absThresholds = {
+    bench:    [60,  100, 130, 160],
+    squat:    [80,  120, 160, 200],
+    deadlift: [100, 150, 200, 240],
+    overhead: [40,  60,  80,  100],
+    row:      [60,  90,  120, 150],
+    default:  [40,  70,  100, 130],
+  };
+
+  let key = 'default';
+  if (ex.includes('bench'))                            key = 'bench';
+  else if (ex.includes('squat'))                       key = 'squat';
+  else if (ex.includes('deadlift'))                    key = 'deadlift';
+  else if (ex.includes('overhead') || ex.includes('ohp') || ex.includes('press')) key = 'overhead';
+  else if (ex.includes('row'))                         key = 'row';
+
+  let ratio = null;
+  if (bw > 0) ratio = est1rm / bw;
+
+  const tiers = ratio !== null ? ratioTiers[key] || ratioTiers.bench : null;
+  const abs   = absThresholds[key] || absThresholds.default;
+  const val   = ratio !== null ? ratio : est1rm;
+  const thresholds = tiers || abs;
+
+  const levels = [
+    { label:'Just Getting Started 💪', caption:'Every legend starts here.', cls:'beginner' },
+    { label:'Solid Lifter 🔥',         caption:'You\'re putting in real work!', cls:'intermediate' },
+    { label:'Seriously Strong 💥',     caption:'Most people never reach this. You did.', cls:'advanced' },
+    { label:'FREAK OF NATURE 👹',      caption:'Top 1%. Absolutely unreal.', cls:'elite' },
+  ];
+
+  if (val >= thresholds[3]) return levels[3];
+  if (val >= thresholds[2]) return levels[2];
+  if (val >= thresholds[1]) return levels[1];
+  return levels[0];
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -204,6 +228,8 @@ async function loadProfile() {
     $('greeting-text').textContent = `${greet()}, ${S.profile.name.split(' ')[0]}! 💪`;
     $('setting-unit').value = S.profile.unit || 'kg';
     $('setting-cal-goal').value = S.profile.calorieGoal || 2000;
+    $('setting-bodyweight').value = S.profile.bodyWeight || '';
+    $('setting-bodyweight-unit').textContent = S.profile.unit || 'kg';
     $('profile-name-big').textContent = S.profile.name;
     $('profile-email-text').textContent = S.user.email;
     $('profile-avatar-big').textContent = initial;
@@ -726,13 +752,16 @@ async function loadMyPRs() {
     el.innerHTML = snap.docs.map(doc => {
       const pr = doc.data();
       const lvl = strengthLevel(pr.exercise, pr.est1rm);
+      const bw = S.profile.bodyWeight;
+      const ratioStr = bw ? `<span class="pr-ratio">${(pr.est1rm/bw).toFixed(2)}× bodyweight</span>` : '';
       return `<div class="pr-card">
         <div class="pr-card-header">
           <div class="pr-exercise-name">${pr.exercise}</div>
           <div class="pr-weight-display">${pr.weight} ${pr.unit}</div>
         </div>
-        <div class="pr-meta">${pr.reps} reps · Est. 1RM: ${pr.est1rm} ${pr.unit} · ${formatDate(pr.date)}</div>
+        <div class="pr-meta">${pr.reps} reps · Est. 1RM: ${pr.est1rm} ${pr.unit} · ${formatDate(pr.date)} ${ratioStr}</div>
         <span class="pr-level ${lvl.cls}">${lvl.label}</span>
+        <div class="pr-caption">${lvl.caption}</div>
       </div>`;
     }).join('');
   } catch(err) { console.error('loadMyPRs', err); }
@@ -1117,6 +1146,8 @@ async function loadProfileView() {
   $('profile-avatar-big').textContent = S.profile.name ? S.profile.name[0].toUpperCase() : '?';
   $('setting-unit').value = S.profile.unit || 'kg';
   $('setting-cal-goal').value = S.profile.calorieGoal || 2000;
+  $('setting-bodyweight').value = S.profile.bodyWeight || '';
+  $('setting-bodyweight-unit').textContent = S.profile.unit || 'kg';
   const [streak, total] = await Promise.all([calcStreak(), getTotalCount()]);
   $('ps-streak').textContent = streak;
   $('ps-total').textContent = total;
@@ -1134,8 +1165,10 @@ async function loadProfileView() {
 async function saveSettings() {
   S.profile.unit = $('setting-unit').value;
   S.profile.calorieGoal = parseInt($('setting-cal-goal').value) || 2000;
+  S.profile.bodyWeight = parseFloat($('setting-bodyweight').value) || 0;
   try {
-    await uref('profile').update({ unit: S.profile.unit, calorieGoal: S.profile.calorieGoal });
+    await uref('profile').update({ unit: S.profile.unit, calorieGoal: S.profile.calorieGoal, bodyWeight: S.profile.bodyWeight });
+    $('setting-bodyweight-unit').textContent = S.profile.unit;
     showToast('Settings saved ✓', 'success');
   } catch(err) { showToast('Error saving', 'error'); }
 }
