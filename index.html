@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>FitTrack — Gym & Calories</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <span class="logo-icon">💪</span>
+      <h1>FitTrack</h1>
+      <p>Your gym &amp; nutrition companion</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</button>
+      <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+    <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+      <input type="email" id="login-email" placeholder="Email" required autocomplete="email">
+      <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" class="btn-primary">Login</button>
+    </form>
+    <form id="signup-form" class="auth-form hidden" onsubmit="handleSignup(event)">
+      <input type="text" id="signup-name" placeholder="Your Name" required>
+      <input type="email" id="signup-email" placeholder="Email" required autocomplete="email">
+      <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required autocomplete="new-password">
+      <button type="submit" class="btn-primary">Create Account</button>
+    </form>
+    <div id="auth-error" class="auth-error hidden"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════ -->
+<div id="app-screen" class="hidden">
+
+  <!-- TOP BAR -->
+  <header id="top-bar">
+    <div class="header-logo">💪 FitTrack</div>
+    <nav class="desktop-nav">
+      <button class="desktop-nav-btn active" data-view="home">🏠 Home</button>
+      <button class="desktop-nav-btn" data-view="gym">🏋️ Gym</button>
+      <button class="desktop-nav-btn" data-view="prs">🏆 PRs</button>
+      <button class="desktop-nav-btn" data-view="calories">🥗 Calories</button>
+      <button class="desktop-nav-btn" data-view="profile">👤 Profile</button>
+    </nav>
+    <div class="header-avatar" id="header-avatar" onclick="showView('profile')">?</div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+
+    <!-- ── HOME ──────────────────────────────── -->
+    <section id="view-home" class="view active">
+      <div class="view-inner">
+        <div class="greeting-card">
+          <h2 id="greeting-text">Hey! 💪</h2>
+          <p id="greeting-sub">Let's get after it today.</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-num" id="streak-num">0</div><div class="stat-label">🔥 Streak</div></div>
+          <div class="stat-card"><div class="stat-num" id="week-num">0</div><div class="stat-label">📅 This Week</div></div>
+          <div class="stat-card"><div class="stat-num" id="total-num">0</div><div class="stat-label">🏋️ Total</div></div>
+        </div>
+        <div class="week-row" id="week-row"><!-- JS --></div>
+        <div id="home-today-card"><!-- JS --></div>
+        <div id="home-macro-card"><!-- JS --></div>
+      </div>
+    </section>
+
+    <!-- ── GYM ───────────────────────────────── -->
+    <section id="view-gym" class="view">
+      <div class="view-inner">
+        <div id="gym-no-setup" class="empty-state hidden">
+          <div class="empty-icon">🏋️</div>
+          <h3>Set Up Your Split</h3>
+          <p>Tell us your routine and we'll track everything for you.</p>
+          <button class="btn-primary" onclick="showView('gym-setup')">Set Up Split</button>
+        </div>
+        <div id="gym-today-section"><!-- JS --></div>
+        <div id="gym-history-section"><!-- JS --></div>
+      </div>
+    </section>
+
+    <!-- ── GYM SETUP ─────────────────────────── -->
+    <section id="view-gym-setup" class="view">
+      <div class="view-inner">
+        <div class="section-header">
+          <button class="back-btn" onclick="showView('gym')">← Back</button>
+          <h2>Workout Split</h2>
+          <div></div>
+        </div>
+        <!-- Step indicators -->
+        <div class="steps-row" id="steps-row">
+          <div class="step-circle active" id="step-dot-1">1</div>
+          <div class="step-line" id="step-line-1"></div>
+          <div class="step-circle" id="step-dot-2">2</div>
+          <div class="step-line" id="step-line-2"></div>
+          <div class="step-circle" id="step-dot-3">3</div>
+          <div class="step-line" id="step-line-3"></div>
+          <div class="step-circle" id="step-dot-4">4</div>
+        </div>
+
+        <!-- Step 1: How many days -->
+        <div id="setup-step-1" class="setup-step active">
+          <h3>How many days per week do you train?</h3>
+          <div class="days-grid" id="days-count-grid">
+            <button class="day-option-btn" data-days="3">3 days</button>
+            <button class="day-option-btn" data-days="4">4 days</button>
+            <button class="day-option-btn" data-days="5">5 days</button>
+            <button class="day-option-btn" data-days="6">6 days</button>
+          </div>
+          <button class="btn-primary" onclick="setupGoTo(2)">Next →</button>
+        </div>
+
+        <!-- Step 2: Which days of the week -->
+        <div id="setup-step-2" class="setup-step">
+          <h3>Which days do you train?</h3>
+          <p class="muted" id="days-select-hint" style="margin-bottom:14px;font-size:13px;">Select the right number of days</p>
+          <div class="weekday-grid" id="weekday-grid">
+            <button class="weekday-btn" data-dow="1">Mon</button>
+            <button class="weekday-btn" data-dow="2">Tue</button>
+            <button class="weekday-btn" data-dow="3">Wed</button>
+            <button class="weekday-btn" data-dow="4">Thu</button>
+            <button class="weekday-btn" data-dow="5">Fri</button>
+            <button class="weekday-btn" data-dow="6">Sat</button>
+            <button class="weekday-btn" data-dow="0">Sun</button>
+          </div>
+          <div class="form-actions">
+            <button class="btn-secondary" onclick="setupGoTo(1)">← Back</button>
+            <button class="btn-primary" onclick="setupGoTo(3)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Muscles + Exercises per day -->
+        <div id="setup-step-3" class="setup-step">
+          <h3>Set up each training day</h3>
+          <div id="day-configs"><!-- JS --></div>
+          <div class="form-actions">
+            <button class="btn-secondary" onclick="setupGoTo(2)">← Back</button>
+            <button class="btn-primary" onclick="setupGoTo(4)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Rating + Save -->
+        <div id="setup-step-4" class="setup-step">
+          <h3>Your Split Rating</h3>
+          <div id="rating-display"><!-- JS --></div>
+          <div class="form-actions" style="margin-top:20px">
+            <button class="btn-secondary" onclick="setupGoTo(3)">← Back</button>
+            <button class="btn-primary" onclick="saveSplit()">Save Split 💾</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PRs ───────────────────────────────── -->
+    <section id="view-prs" class="view">
+      <div class="view-inner">
+        <div class="section-header">
+          <h2>My PRs 🏆</h2>
+          <button class="btn-primary small" onclick="togglePRForm()">+ Add PR</button>
+        </div>
+        <!-- Add PR form -->
+        <div id="pr-add-form" class="card hidden">
+          <div class="pr-form">
+            <select id="pr-exercise-sel" class="form-input">
+              <option value="">Select exercise...</option>
+            </select>
+            <div class="pr-input-row">
+              <input type="number" id="pr-weight-inp" class="form-input" placeholder="Weight" min="0" step="0.5">
+              <select id="pr-unit-sel" class="form-input">
+                <option value="kg">kg</option>
+                <option value="lbs">lbs</option>
+              </select>
+              <input type="number" id="pr-reps-inp" class="form-input" placeholder="Reps" min="1" max="50">
+            </div>
+            <div class="form-actions">
+              <button class="btn-secondary" onclick="togglePRForm()">Cancel</button>
+              <button class="btn-primary" onclick="submitPR()">Save PR</button>
+            </div>
+          </div>
+        </div>
+        <p class="section-title">My Records</p>
+        <div id="my-prs-list"><!-- JS --></div>
+        <p class="section-title" style="margin-top:28px">Global Leaderboard</p>
+        <select id="lb-exercise-sel" class="form-input" style="margin-bottom:14px" onchange="loadLeaderboard()">
+          <option value="">Select exercise to view rankings...</option>
+        </select>
+        <div id="leaderboard-list"><!-- JS --></div>
+      </div>
+    </section>
+
+    <!-- ── CALORIES ──────────────────────────── -->
+    <section id="view-calories" class="view">
+      <div class="view-inner">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="shiftCalDay(-1)">‹</button>
+          <h2 id="cal-date-label">Today</h2>
+          <button class="cal-nav-btn" onclick="shiftCalDay(1)">›</button>
+        </div>
+        <div class="macro-overview" id="macro-overview"><!-- JS --></div>
+        <!-- Meals -->
+        <div class="meal-section">
+          <div class="meal-header">
+            <span>🌅</span><h3>Breakfast</h3>
+            <span class="meal-cals" id="cals-breakfast">0 cal</span>
+            <button class="add-food-btn" onclick="openFoodModal('breakfast')">+</button>
+          </div>
+          <div class="meal-items" id="items-breakfast"></div>
+        </div>
+        <div class="meal-section">
+          <div class="meal-header">
+            <span>☀️</span><h3>Lunch</h3>
+            <span class="meal-cals" id="cals-lunch">0 cal</span>
+            <button class="add-food-btn" onclick="openFoodModal('lunch')">+</button>
+          </div>
+          <div class="meal-items" id="items-lunch"></div>
+        </div>
+        <div class="meal-section">
+          <div class="meal-header">
+            <span>🌙</span><h3>Dinner</h3>
+            <span class="meal-cals" id="cals-dinner">0 cal</span>
+            <button class="add-food-btn" onclick="openFoodModal('dinner')">+</button>
+          </div>
+          <div class="meal-items" id="items-dinner"></div>
+        </div>
+        <div class="meal-section">
+          <div class="meal-header">
+            <span>🍎</span><h3>Snacks</h3>
+            <span class="meal-cals" id="cals-snacks">0 cal</span>
+            <button class="add-food-btn" onclick="openFoodModal('snacks')">+</button>
+          </div>
+          <div class="meal-items" id="items-snacks"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PROFILE ───────────────────────────── -->
+    <section id="view-profile" class="view">
+      <div class="view-inner">
+        <div class="profile-hero">
+          <div class="profile-avatar-big" id="profile-avatar-big">?</div>
+          <div class="profile-name-big" id="profile-name-big">Loading...</div>
+          <div class="profile-email-text" id="profile-email-text"></div>
+        </div>
+        <div class="profile-stats">
+          <div class="profile-stat"><div class="profile-stat-num" id="ps-streak">0</div><div class="profile-stat-label">🔥 Streak</div></div>
+          <div class="profile-stat"><div class="profile-stat-num" id="ps-total">0</div><div class="profile-stat-label">🏋️ Workouts</div></div>
+          <div class="profile-stat"><div class="profile-stat-num" id="ps-prs">0</div><div class="profile-stat-label">🏆 PRs</div></div>
+        </div>
+        <div class="card">
+          <div class="section-header"><h3>My Split</h3><button class="btn-ghost" onclick="showView('gym-setup')">Edit →</button></div>
+          <div id="profile-split-info" class="muted" style="font-size:14px">Not set up yet</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:12px">Settings</h3>
+          <div class="setting-row">
+            <label>Weight Unit</label>
+            <select id="setting-unit">
+              <option value="kg">kg</option>
+              <option value="lbs">lbs</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label>Daily Calorie Goal</label>
+            <input type="number" id="setting-cal-goal" class="form-input" placeholder="2000" style="width:110px">
+          </div>
+          <button class="btn-primary" style="margin-top:14px;width:100%" onclick="saveSettings()">Save Settings</button>
+        </div>
+        <button class="btn-danger" onclick="handleLogout()">Sign Out</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV (mobile) -->
+  <nav id="bottom-nav">
+    <button class="bnav-btn active" data-view="home"><span class="bnav-icon">🏠</span><span class="bnav-label">Home</span></button>
+    <button class="bnav-btn" data-view="gym"><span class="bnav-icon">🏋️</span><span class="bnav-label">Gym</span></button>
+    <button class="bnav-btn" data-view="prs"><span class="bnav-icon">🏆</span><span class="bnav-label">PRs</span></button>
+    <button class="bnav-btn" data-view="calories"><span class="bnav-icon">🥗</span><span class="bnav-label">Calories</span></button>
+    <button class="bnav-btn" data-view="profile"><span class="bnav-icon">👤</span><span class="bnav-label">Profile</span></button>
+  </nav>
+
+</div><!-- /#app-screen -->
+
+<!-- ════════════════════════════════════════
+     FOOD MODAL
+════════════════════════════════════════ -->
+<div id="food-modal" class="modal-overlay hidden" onclick="onModalOverlayClick(event)">
+  <div class="modal-sheet" id="food-modal-sheet">
+    <div class="modal-drag"></div>
+    <div class="modal-header">
+      <h3 id="food-modal-title">Add Food</h3>
+      <button class="modal-close" onclick="closeFoodModal()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="ftab-search" onclick="switchFoodTab('search')">🔍 Search</button>
+      <button class="modal-tab" id="ftab-photo" onclick="switchFoodTab('photo')">📷 Photo</button>
+      <button class="modal-tab" id="ftab-custom" onclick="switchFoodTab('custom')">✏️ Custom</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- SEARCH TAB -->
+      <div id="food-tab-search" class="food-tab-panel active">
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" id="food-search-inp" placeholder="Search foods..." oninput="onFoodSearch()" autocomplete="off">
+        </div>
+        <div id="food-search-results"><!-- JS --></div>
+        <!-- Selected food + serving -->
+        <div id="selected-food-panel" class="hidden">
+          <div class="selected-food-box">
+            <div class="sf-name" id="sf-name"></div>
+            <div class="sf-macros" id="sf-macros"><!-- JS --></div>
+            <div class="serving-row">
+              <label>Amount:</label>
+              <input type="number" id="serving-amount-inp" value="100" min="1" oninput="updateServingPreview()">
+              <span class="unit-label" id="serving-unit-label">g</span>
+            </div>
+          </div>
+          <button class="btn-primary" style="width:100%" onclick="addSelectedFood()">Add to <span class="add-meal-name"></span></button>
+        </div>
+      </div>
+
+      <!-- PHOTO TAB -->
+      <div id="food-tab-photo" class="food-tab-panel">
+        <div id="photo-input-section">
+          <div class="photo-btns">
+            <label class="photo-btn-label">
+              <span class="photo-icon">📷</span>
+              <span>Take Photo</span>
+              <input type="file" accept="image/*" capture="environment" onchange="handleFoodPhoto(event)" hidden>
+            </label>
+            <label class="photo-btn-label">
+              <span class="photo-icon">🖼️</span>
+              <span>From Gallery</span>
+              <input type="file" accept="image/*" onchange="handleFoodPhoto(event)" hidden>
+            </label>
+          </div>
+          <p style="text-align:center;font-size:13px;color:var(--muted)">AI will identify the food and calculate macros</p>
+        </div>
+        <div id="photo-preview-section" class="hidden">
+          <div class="photo-preview-box"><img id="photo-preview-img" src="" alt="food"></div>
+        </div>
+        <div id="photo-analyzing-section" class="analyzing-box hidden">
+          <div class="spinner"></div>
+          <p>Analysing your food... 🤖</p>
+        </div>
+        <div id="photo-result-section" class="hidden">
+          <h4 style="margin-bottom:10px;font-size:15px;font-weight:700">Detected Foods</h4>
+          <div id="photo-detected-items"></div>
+          <div class="photo-totals" id="photo-totals-box"></div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn-secondary" style="flex:1" onclick="switchFoodTab('custom')">✏️ Edit</button>
+            <button class="btn-primary" style="flex:1" onclick="addPhotoFood()">Add to <span class="add-meal-name"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUSTOM TAB -->
+      <div id="food-tab-custom" class="food-tab-panel">
+        <div class="custom-form">
+          <input type="text" id="custom-name" class="form-input" placeholder="Food name">
+          <div class="macro-inputs">
+            <div class="macro-input"><label>Calories</label><input type="number" id="custom-cal" class="form-input" placeholder="0" min="0"></div>
+            <div class="macro-input"><label>Protein (g)</label><input type="number" id="custom-protein" class="form-input" placeholder="0" min="0" step="0.1"></div>
+            <div class="macro-input"><label>Carbs (g)</label><input type="number" id="custom-carbs" class="form-input" placeholder="0" min="0" step="0.1"></div>
+            <div class="macro-input"><label>Fat (g)</label><input type="number" id="custom-fat" class="form-input" placeholder="0" min="0" step="0.1"></div>
+          </div>
+          <div class="save-check">
+            <input type="checkbox" id="custom-save-chk" style="width:16px;height:16px">
+            <label for="custom-save-chk">Save for future use</label>
+          </div>
+          <button class="btn-primary" onclick="addCustomFood()">Add to <span class="add-meal-name"></span></button>
+        </div>
+      </div>
+
+    </div><!-- /.modal-body -->
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast hidden"></div>
+
+<!-- FIREBASE (compat SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
