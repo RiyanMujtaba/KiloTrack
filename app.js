@@ -11,7 +11,9 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "792372294847",
   appId: "1:792372294847:web:eba281f7685e84660e020a"
 };
-const GROQ_KEY = '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';
+function getGroqKey() {
+  return localStorage.getItem('groq_api_key') || '';
+}
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 // ── INIT ─────────────────────────────────────────────────────────────
@@ -990,9 +992,15 @@ function fileToBase64(file) {
 }
 
 async function analyzeImageWithGroq(base64) {
+  const key = getGroqKey();
+  if (!key) {
+    const k = prompt('Enter your Groq API key (saved locally, never uploaded):');
+    if (!k) throw new Error('No API key provided');
+    localStorage.setItem('groq_api_key', k.trim());
+  }
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${getGroqKey()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [{
