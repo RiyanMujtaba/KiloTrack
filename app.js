@@ -111,11 +111,44 @@ function strengthLevel(exercise, est1rm) {
   const val   = ratio !== null ? ratio : est1rm;
   const thresholds = tiers || abs;
 
+  const r = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const levels = [
-    { label:'Just Getting Started 💪', caption:'Every legend starts here.', cls:'beginner' },
-    { label:'Solid Lifter 🔥',         caption:'You\'re putting in real work!', cls:'intermediate' },
-    { label:'Seriously Strong 💥',     caption:'Most people never reach this. You did.', cls:'advanced' },
-    { label:'FREAK OF NATURE 👹',      caption:'Top 1%. Absolutely unreal.', cls:'elite' },
+    { label:'Just Getting Started 💪', caption: r([
+        'Every legend starts here. Keep going.',
+        'Day 1 of many. The grind begins.',
+        'You showed up. That already puts you ahead.',
+        'Rome wasn\'t built in a day. Neither are gains.',
+        'The hardest part is starting. You\'re doing it.',
+        'Beginnings are where legends are made.',
+      ]), cls:'beginner' },
+    { label:'Solid Lifter 🔥', caption: r([
+        'You\'re putting in real work. It shows.',
+        'Most people quit here. You didn\'t.',
+        'This is where the body starts to change.',
+        'You\'re not average. Average people don\'t train like this.',
+        'The grind is real and so are the results.',
+        'Consistency is your superpower.',
+        'You\'re in the top half and climbing.',
+      ]), cls:'intermediate' },
+    { label:'Seriously Strong 💥', caption: r([
+        'Most people never reach this. You did.',
+        'You\'re built different. Genuinely.',
+        'Strength like this doesn\'t happen by accident.',
+        'People at the gym notice you. They should.',
+        'This is elite territory. Welcome.',
+        'Your work ethic is something else entirely.',
+        'Years of dedication showing up in one number.',
+      ]), cls:'advanced' },
+    { label:'FREAK OF NATURE 👹', caption: r([
+        'Top 1%. Absolutely unreal.',
+        'Bro what are you eating??',
+        'This is not normal. In the best way possible.',
+        'Scientists want to study you.',
+        'You broke the app a little bit ngl.',
+        'That\'s not a PR, that\'s a statement.',
+        'People train their whole lives for this.',
+        'Inhuman. Certified freak.',
+      ]), cls:'elite' },
   ];
 
   if (val >= thresholds[3]) return levels[3];
