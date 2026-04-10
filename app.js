@@ -430,13 +430,22 @@ async function renderHomeMacroCard() {
   </div>`;
 }
 
-async function toggleAttendance() {
+async function toggleAttendance() { await markAttendance(false); } // legacy home button
+async function markAttendance(isSkip) {
   if (!S.gymSetup) return;
   const today = todayStr();
   const snap = await ucol('attendance').doc(today).get();
-  const current = snap.exists && snap.data().attended;
-  await ucol('attendance').doc(today).set({ attended: !current, date: today });
-  showToast(!current ? '✓ Attendance marked!' : 'Attendance removed', !current?'success':'');
+  const data = snap.exists ? snap.data() : {};
+  if (!isSkip) {
+    const already = data.attended && !data.skipped;
+    await ucol('attendance').doc(today).set({ attended: !already, skipped: false, date: today });
+    showToast(!already ? '✓ Attendance marked!' : 'Attendance removed', !already ? 'success' : '');
+  } else {
+    const already = data.skipped;
+    await ucol('attendance').doc(today).set({ attended: false, skipped: !already, date: today });
+    showToast(!already ? '✗ Marked as skipped' : 'Skip removed', '');
+  }
+  loadGymView();
   loadHome();
 }
 
@@ -463,6 +472,8 @@ async function loadGymView() {
     return;
   }
   noSetup.classList.add('hidden');
+  const editRow = $('gym-edit-btn-row');
+  if (editRow) editRow.classList.remove('hidden');
 
   // Today
   const today = todayStr();
@@ -470,6 +481,7 @@ async function loadGymView() {
   const td = S.gymSetup.trainingDays.find(d => d.dayOfWeek === dow);
   const attSnap = await ucol('attendance').doc(today).get();
   const attended = attSnap.exists && attSnap.data().attended;
+  const skipped  = attSnap.exists && attSnap.data().skipped;
 
   let todayHTML = '';
   if (!td) {
@@ -488,10 +500,16 @@ async function loadGymView() {
         <h2 style="font-size:20px;font-weight:800">${td.name}</h2>
         <span class="day-badge">${muscles}</span>
       </div>
-      <button class="checkin-btn ${attended?'checked':''}" onclick="toggleAttendance()" style="margin-bottom:16px">
-        <span class="checkin-icon">${attended?'✓':'○'}</span>
-        <span>${attended?'Attended ✓':'Mark as Attended'}</span>
-      </button>
+      <div class="attendance-btns" style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="checkin-btn ${attended?'checked':''}" onclick="markAttendance(false)" style="flex:1">
+          <span class="checkin-icon">${attended?'✓':'○'}</span>
+          <span>${attended?'Attended ✓':'Mark Attended'}</span>
+        </button>
+        <button class="checkin-btn skip-btn ${skipped?'skipped':''}" onclick="markAttendance(true)" style="flex:1">
+          <span class="checkin-icon">${skipped?'✗':'○'}</span>
+          <span>${skipped?'Skipped ✗':'Mark Skipped'}</span>
+        </button>
+      </div>
       <div class="exercise-list">${exerciseCards||'<p style="color:var(--muted);font-size:14px">No exercises added for this day.</p>'}</div>
     </div>`;
   }
@@ -777,7 +795,7 @@ async function loadMyPRs() {
           <div class="pr-exercise-name">${pr.exercise}</div>
           <div class="pr-weight-display">${pr.weight} ${pr.unit}</div>
         </div>
-        <div class="pr-meta">${pr.reps} reps · Est. 1RM: ${pr.est1rm} ${pr.unit} · ${formatDate(pr.date)} ${ratioStr}</div>
+        <div class="pr-meta">${pr.weight} ${pr.unit} × ${pr.reps} reps · ${formatDate(pr.date)} ${ratioStr}</div>
         <span class="pr-level ${lvl.cls}">${lvl.label}</span>
         <div class="pr-caption">${lvl.caption}</div>
       </div>`;

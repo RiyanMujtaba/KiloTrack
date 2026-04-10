@@ -213,6 +213,8 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 .checkin-btn:active { transform: scale(0.98); }
 .checkin-btn.checked { background: linear-gradient(135deg, #059669, #047857); box-shadow: 0 4px 24px rgba(16,185,129,0.3); }
+.checkin-btn.skip-btn { background: var(--surface2); }
+.checkin-btn.skip-btn.skipped { background: linear-gradient(135deg, #b45309, #92400e); box-shadow: 0 4px 24px rgba(245,158,11,0.3); }
 .checkin-icon { font-size: 22px; }
 
 /* ── GYM SETUP ───────────────────────────────────────────────────── */
