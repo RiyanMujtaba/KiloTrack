@@ -339,8 +339,10 @@ async function loadHome() {
     // Week row
     renderWeekRow();
 
-    // Today card
-    await renderHomeTodayCard();
+    // Pre-fetch today's attendance into cache then render instantly
+    const attSnap = await ucol('attendance').doc(todayStr()).get();
+    S.todayAtt = attSnap.exists ? attSnap.data() : {};
+    renderHomeTodayCard();
 
     // Macro summary
     await renderHomeMacroCard();
@@ -420,8 +422,6 @@ async function renderHomeTodayCard() {
   if (!el) return;
   const today = todayStr();
   const dow = new Date().getDay();
-  const attSnap = await ucol('attendance').doc(today).get();
-  const attended = attSnap.exists && attSnap.data().attended;
 
   if (!S.gymSetup) {
     el.innerHTML = `<div class="today-card"><p style="color:var(--muted);font-size:14px">Set up your split to track workouts.</p><button class="btn-primary" style="margin-top:12px;width:100%" onclick="showView('gym-setup')">Set Up Split</button></div>`;
@@ -430,19 +430,29 @@ async function renderHomeTodayCard() {
   const td = S.gymSetup.trainingDays.find(d => d.dayOfWeek === dow);
   if (!td) {
     el.innerHTML = `<div class="today-card rest-day"><div style="font-size:36px;text-align:center;margin-bottom:8px">😴</div><p style="text-align:center;font-weight:700;font-size:17px">Rest Day</p><p style="text-align:center;color:var(--muted);font-size:14px;margin-top:4px">Recovery is part of the program.</p></div>`;
-  } else {
-    const muscles = (td.muscles||[]).map(m => m[0].toUpperCase()+m.slice(1)).join(', ');
-    el.innerHTML = `<div class="today-card ${attended?'attended-day':'training-day'}">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div><div style="font-weight:800;font-size:17px">${td.name}</div><div style="font-size:13px;color:var(--muted);margin-top:2px">${muscles}</div></div>
-        <div style="font-size:13px;color:var(--muted)">${(td.exercises||[]).length} exercises</div>
-      </div>
-      <button class="checkin-btn ${attended?'checked':''}" onclick="toggleAttendance()" id="home-checkin-btn">
-        <span class="checkin-icon">${attended?'✓':'○'}</span>
-        <span>${attended?'Attended ✓':'Mark as Attended'}</span>
-      </button>
-    </div>`;
+    return;
   }
+  // Use cached attendance state if available, else fetch once
+  const attData = S.todayAtt || {};
+  const attended = attData.attended && !attData.skipped;
+  const skipped  = attData.skipped;
+  const muscles = (td.muscles||[]).map(m => m[0].toUpperCase()+m.slice(1)).join(', ');
+  el.innerHTML = `<div class="today-card ${attended?'attended-day':skipped?'skipped-day':'training-day'}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div><div style="font-weight:800;font-size:17px">${td.name}</div><div style="font-size:13px;color:var(--muted);margin-top:2px">${muscles}</div></div>
+      <div style="font-size:13px;color:var(--muted)">${(td.exercises||[]).length} exercises</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="checkin-btn ${attended?'checked':''}" onclick="markAttendance(false)" style="flex:1">
+        <span class="checkin-icon">${attended?'✓':'○'}</span>
+        <span>${attended?'Attended ✓':'Mark Attended'}</span>
+      </button>
+      <button class="checkin-btn skip-btn ${skipped?'skipped':''}" onclick="markAttendance(true)" style="flex:1">
+        <span class="checkin-icon">${skipped?'✗':'○'}</span>
+        <span>${skipped?'Skipped ✗':'Mark Skipped'}</span>
+      </button>
+    </div>
+  </div>`;
 }
 
 async function renderHomeMacroCard() {
@@ -469,23 +479,55 @@ async function renderHomeMacroCard() {
   </div>`;
 }
 
-async function toggleAttendance() { await markAttendance(false); } // legacy home button
+async function toggleAttendance() { await markAttendance(false); }
 async function markAttendance(isSkip) {
   if (!S.gymSetup) return;
   const today = todayStr();
-  const snap = await ucol('attendance').doc(today).get();
-  const data = snap.exists ? snap.data() : {};
+  const prev = S.todayAtt || {};
+  const r = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  let newData;
   if (!isSkip) {
-    const already = data.attended && !data.skipped;
-    await ucol('attendance').doc(today).set({ attended: !already, skipped: false, date: today });
-    showToast(!already ? '✓ Attendance marked!' : 'Attendance removed', !already ? 'success' : '');
+    const already = prev.attended && !prev.skipped;
+    newData = { attended: !already, skipped: false, date: today };
+    if (!already) showMotivationalToast('attend');
+    else showToast('Attendance removed', '');
   } else {
-    const already = data.skipped;
-    await ucol('attendance').doc(today).set({ attended: false, skipped: !already, date: today });
-    showToast(!already ? '✗ Marked as skipped' : 'Skip removed', '');
+    const already = prev.skipped;
+    newData = { attended: false, skipped: !already, date: today };
+    if (!already) showMotivationalToast('skip');
+    else showToast('Skip removed', '');
   }
-  loadGymView();
-  loadHome();
+
+  // Optimistic update — render instantly, save in background
+  S.todayAtt = newData;
+  renderHomeTodayCard();
+  ucol('attendance').doc(today).set(newData).catch(() => showToast('Save failed', 'error'));
+  // Refresh gym view if open
+  if (S.currentView === 'gym') loadGymView();
+}
+
+function showMotivationalToast(type) {
+  const r = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const msg = type === 'attend' ? r([
+    '🔥 Let\'s get it! Beast mode on.',
+    '💪 That\'s what I\'m talking about!',
+    '⚡ You showed up. Half the battle won.',
+    '🏋️ King behaviour. Now go lift.',
+    '🚀 Another day, another W.',
+    '😤 No days off. Respect.',
+    '💥 The grind never stops.',
+    '👊 Built different. Prove it today.',
+  ]) : r([
+    '😴 Rest up. Come back stronger.',
+    '🙏 It\'s okay. Tomorrow is a new day.',
+    '🛌 Recovery is training too.',
+    '💭 Skipped today, destroy it tomorrow.',
+    '⚠️ Don\'t make it a habit though...',
+    '😔 We all have those days. Reset.',
+    '🔄 One skip won\'t stop you. Get back on track.',
+  ]);
+  showToast(msg, type === 'attend' ? 'success' : '');
 }
 
 // ════════════════════════════════════════════════════════════════════

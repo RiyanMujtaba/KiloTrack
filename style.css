@@ -198,6 +198,7 @@ a { color: var(--accent-light); text-decoration: none; }
 .today-card.rest-day { border-color: rgba(123,127,158,0.3); }
 .today-card.training-day { border-color: rgba(124,58,237,0.4); }
 .today-card.attended-day { border-color: var(--green); background: var(--green-dim); }
+.today-card.skipped-day  { border-color: var(--orange); background: rgba(245,158,11,0.07); }
 .checkin-btn {
   width: 100%;
   padding: 16px;
