@@ -54,7 +54,7 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
 }
 function uid() { return S.user ? S.user.uid : null; }
-function uref(path) { return db.doc(`users/${uid()}/${path}`); }
+function uref(path) { return db.doc(`users/${uid()}/data/${path}`); }
 function ucol(path) { return db.collection(`users/${uid()}/${path}`); }
 
 let toastTimer = null;
@@ -174,7 +174,7 @@ async function handleGoogleSignIn() {
     showAuthError(err.message);
   }
 }
-function urefWithUID(uid, path) { return db.doc(`users/${uid}/${path}`); }
+function urefWithUID(uid, path) { return db.doc(`users/${uid}/data/${path}`); }
 
 function showAuthError(msg) {
   const el = $('auth-error');
