@@ -939,12 +939,12 @@ function renderFoodResults(foods) {
 }
 
 function selectFood(foodId) {
-  const food = FOODS.find(f => f.id === foodId);
+  const food = FOODS.find(f => f.id === foodId) || (S.customFoods||[]).find(f => f.id === foodId);
   if (!food) return;
   S.selectedFood = food;
   $('sf-name').textContent = food.name;
-  $('serving-amount-inp').value = food.serving;
-  $('serving-unit-label').textContent = food.unit;
+  $('serving-amount-inp').value = 1;
+  $('serving-unit-label').textContent = `× ${food.serving}${food.unit}`;
   updateServingPreview();
   $('selected-food-panel').classList.remove('hidden');
   $('food-search-results').innerHTML = '';
@@ -952,7 +952,8 @@ function selectFood(foodId) {
 
 function updateServingPreview() {
   if (!S.selectedFood) return;
-  const amount = parseFloat($('serving-amount-inp').value) || S.selectedFood.serving;
+  const servings = parseFloat($('serving-amount-inp').value) || 1;
+  const amount = servings * S.selectedFood.serving;
   const n = calcNutrition(S.selectedFood, amount);
   $('sf-macros').innerHTML = `
     <div class="sf-macro"><div class="sf-macro-val">${n.cal}</div><div class="sf-macro-label">kcal</div></div>
@@ -963,9 +964,11 @@ function updateServingPreview() {
 
 async function addSelectedFood() {
   if (!S.selectedFood) return;
-  const amount = parseFloat($('serving-amount-inp').value) || S.selectedFood.serving;
+  const servings = parseFloat($('serving-amount-inp').value) || 1;
+  const amount = servings * S.selectedFood.serving;
   const n = calcNutrition(S.selectedFood, amount);
-  const entry = { name: `${S.selectedFood.name} (${amount}${S.selectedFood.unit})`, ...n };
+  const servingLabel = servings === 1 ? `1 serving` : `${servings} servings`;
+  const entry = { name: `${S.selectedFood.name} (${servingLabel})`, ...n };
   await addToMeal(entry);
 }
 
