@@ -268,6 +268,10 @@
           <div class="profile-stat"><div class="profile-stat-num" id="ps-total">0</div><div class="profile-stat-label">🏋️ Workouts</div></div>
           <div class="profile-stat"><div class="profile-stat-num" id="ps-prs">0</div><div class="profile-stat-label">🏆 PRs</div></div>
         </div>
+        <div id="body-fat-card" class="card hidden">
+          <h3 style="margin-bottom:12px">Body Composition</h3>
+          <div id="body-fat-content"></div>
+        </div>
         <div class="card">
           <div class="section-header"><h3>My Split</h3><button class="btn-ghost" onclick="showView('gym-setup')">Edit →</button></div>
           <div id="profile-split-info" class="muted" style="font-size:14px">Not set up yet</div>
@@ -287,6 +291,21 @@
               <input type="number" id="setting-bodyweight" class="form-input" placeholder="75" min="20" max="300" step="0.5" style="width:90px">
               <span id="setting-bodyweight-unit" style="color:var(--muted);font-size:14px">kg</span>
             </div>
+          </div>
+          <div class="setting-row">
+            <label>Height (cm)</label>
+            <input type="number" id="setting-height" class="form-input" placeholder="175" min="100" max="250" style="width:90px">
+          </div>
+          <div class="setting-row">
+            <label>Age</label>
+            <input type="number" id="setting-age" class="form-input" placeholder="22" min="10" max="100" style="width:90px">
+          </div>
+          <div class="setting-row">
+            <label>Gender</label>
+            <select id="setting-gender" class="form-input" style="width:120px">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
           </div>
           <div class="setting-row">
             <label>Daily Calorie Goal</label>

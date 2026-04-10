@@ -264,6 +264,9 @@ async function loadProfile() {
     $('setting-cal-goal').value = S.profile.calorieGoal || 2000;
     $('setting-bodyweight').value = S.profile.bodyWeight || '';
     $('setting-bodyweight-unit').textContent = S.profile.unit || 'kg';
+    $('setting-height').value = S.profile.height || '';
+    $('setting-age').value = S.profile.age || '';
+    $('setting-gender').value = S.profile.gender || 'male';
     $('profile-name-big').textContent = S.profile.name;
     $('profile-email-text').textContent = S.user.email;
     $('profile-avatar-big').textContent = initial;
@@ -313,7 +316,9 @@ async function loadHome() {
     const today = todayStr();
     const dow = new Date().getDay();
 
-    // Greeting sub
+    // Greeting
+    const firstName = (S.profile.name || 'there').split(' ')[0];
+    $('greeting-text').textContent = `${greet()}, ${firstName}! 💪`;
     if (S.gymSetup) {
       const td = S.gymSetup.trainingDays.find(d => d.dayOfWeek === dow);
       $('greeting-sub').textContent = td ? `${td.name} today. Let's go!` : 'Rest day today. Recover well.';
@@ -1237,6 +1242,10 @@ async function loadProfileView() {
   $('setting-cal-goal').value = S.profile.calorieGoal || 2000;
   $('setting-bodyweight').value = S.profile.bodyWeight || '';
   $('setting-bodyweight-unit').textContent = S.profile.unit || 'kg';
+  $('setting-height').value = S.profile.height || '';
+  $('setting-age').value = S.profile.age || '';
+  $('setting-gender').value = S.profile.gender || 'male';
+  renderBodyFatCard();
   const [streak, total] = await Promise.all([calcStreak(), getTotalCount()]);
   $('ps-streak').textContent = streak;
   $('ps-total').textContent = total;
@@ -1251,13 +1260,68 @@ async function loadProfileView() {
   }
 }
 
+function calcBodyFat(weight, height, age, gender) {
+  if (!weight || !height || !age) return null;
+  const bmi = weight / ((height / 100) ** 2);
+  // Deurenberg formula
+  const bf = (1.20 * bmi) + (0.23 * age) - (10.8 * (gender === 'male' ? 1 : 0)) - 5.4;
+  return Math.round(bf * 10) / 10;
+}
+
+function bodyFatCategory(bf, gender) {
+  if (gender === 'male') {
+    if (bf < 6)  return { label: 'Essential Fat', color: '#60a5fa' };
+    if (bf < 14) return { label: 'Athletic', color: '#10b981' };
+    if (bf < 18) return { label: 'Fit', color: '#34d399' };
+    if (bf < 25) return { label: 'Average', color: '#f59e0b' };
+    return        { label: 'Above Average', color: '#ef4444' };
+  } else {
+    if (bf < 14) return { label: 'Essential Fat', color: '#60a5fa' };
+    if (bf < 21) return { label: 'Athletic', color: '#10b981' };
+    if (bf < 25) return { label: 'Fit', color: '#34d399' };
+    if (bf < 32) return { label: 'Average', color: '#f59e0b' };
+    return        { label: 'Above Average', color: '#ef4444' };
+  }
+}
+
+function renderBodyFatCard() {
+  const { bodyWeight, height, age, gender = 'male' } = S.profile;
+  const card = $('body-fat-card');
+  const content = $('body-fat-content');
+  if (!card || !content) return;
+  const bf = calcBodyFat(bodyWeight, height, age, gender);
+  if (!bf) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  const cat = bodyFatCategory(bf, gender);
+  const bmi = bodyWeight && height ? Math.round((bodyWeight / ((height/100)**2)) * 10) / 10 : null;
+  content.innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+      <div style="font-size:42px;font-weight:900;color:${cat.color}">${bf}%</div>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:${cat.color}">${cat.label}</div>
+        <div style="font-size:13px;color:var(--muted)">Estimated body fat</div>
+      </div>
+    </div>
+    ${bmi ? `<div style="font-size:13px;color:var(--muted)">BMI: <b style="color:var(--text)">${bmi}</b> · ${bodyWeight}kg · ${height}cm · Age ${age}</div>` : ''}
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Based on Deurenberg BMI formula. For reference only.</div>
+  `;
+}
+
 async function saveSettings() {
-  S.profile.unit = $('setting-unit').value;
+  S.profile.unit       = $('setting-unit').value;
   S.profile.calorieGoal = parseInt($('setting-cal-goal').value) || 2000;
-  S.profile.bodyWeight = parseFloat($('setting-bodyweight').value) || 0;
+  S.profile.bodyWeight  = parseFloat($('setting-bodyweight').value) || 0;
+  S.profile.height      = parseFloat($('setting-height').value) || 0;
+  S.profile.age         = parseInt($('setting-age').value) || 0;
+  S.profile.gender      = $('setting-gender').value;
   try {
-    await uref('profile').update({ unit: S.profile.unit, calorieGoal: S.profile.calorieGoal, bodyWeight: S.profile.bodyWeight });
+    await uref('profile').update({
+      unit: S.profile.unit, calorieGoal: S.profile.calorieGoal,
+      bodyWeight: S.profile.bodyWeight, height: S.profile.height,
+      age: S.profile.age, gender: S.profile.gender
+    });
     $('setting-bodyweight-unit').textContent = S.profile.unit;
+    renderBodyFatCard();
     showToast('Settings saved ✓', 'success');
   } catch(err) { showToast('Error saving', 'error'); }
 }
