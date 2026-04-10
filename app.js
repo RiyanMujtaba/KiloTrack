@@ -263,6 +263,7 @@ function showView(name) {
   else if (name === 'prs') loadPRView();
   else if (name === 'calories') loadCalView();
   else if (name === 'profile') loadProfileView();
+  else if (name === 'gym-setup') initSetupWizard();
 }
 
 // wire nav buttons
@@ -523,6 +524,23 @@ async function loadGymView() {
 // ════════════════════════════════════════════════════════════════════
 //  GYM SETUP WIZARD
 // ════════════════════════════════════════════════════════════════════
+function initSetupWizard() {
+  // Pre-populate wizard with existing split if editing
+  if (S.gymSetup && S.gymSetup.trainingDays && S.gymSetup.trainingDays.length > 0) {
+    const tds = S.gymSetup.trainingDays;
+    S.setup.numDays = tds.length;
+    S.setup.selectedDOWs = tds.map(d => d.dayOfWeek);
+    S.setup.trainingDays = JSON.parse(JSON.stringify(tds));
+    // Mark the correct day count button active
+    document.querySelectorAll('.day-count-btn').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.days) === S.setup.numDays);
+    });
+  } else {
+    S.setup = { numDays: 4, selectedDOWs: [], trainingDays: [] };
+  }
+  setupGoTo(1);
+}
+
 function setupGoTo(step) {
   // Validate before going forward
   if (step === 2 && !S.setup.numDays) { showToast('Pick a number of days first', 'error'); return; }
