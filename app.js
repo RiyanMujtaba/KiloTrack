@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-//  FITTRACK — app.js
+//  KILOTRACK — app.js
 // ════════════════════════════════════════════════════════════════════
 
 // ── FIREBASE CONFIG ──────────────────────────────────────────────────
@@ -130,6 +130,22 @@ async function handleSignup(e) {
   try {
     const cred = await auth.createUserWithEmailAndPassword(email, pass);
     await urefWithUID(cred.user.uid, 'profile').set({ name, email, unit:'kg', calorieGoal:2000 });
+  } catch(err) {
+    showAuthError(err.message);
+  }
+}
+async function handleGoogleSignIn() {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const cred = await auth.signInWithPopup(provider);
+    const uid = cred.user.uid;
+    const profileRef = urefWithUID(uid, 'profile');
+    const snap = await profileRef.get();
+    if (!snap.exists) {
+      const name = cred.user.displayName || 'User';
+      const email = cred.user.email || '';
+      await profileRef.set({ name, email, unit:'kg', calorieGoal:2000 });
+    }
   } catch(err) {
     showAuthError(err.message);
   }
