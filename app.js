@@ -754,6 +754,14 @@ async function saveSplit() {
 
 // ════════════════════════════════════════════════════════════════════
 //  PR VIEW
+const DUMBBELL_EXERCISES = new Set([
+  'Dumbbell Bench Press','Incline Dumbbell Press','Decline Dumbbell Press',
+  'Dumbbell Flyes','Incline Dumbbell Flyes','Dumbbell Shoulder Press','Arnold Press',
+  'Dumbbell Curl','Hammer Curl','Dumbbell Row','Lateral Raises','Front Raises',
+  'Rear Delt Flyes','Kickbacks','Overhead Tricep Extension','Goblet Squat'
+]);
+function isDumbbellExercise(name) { return DUMBBELL_EXERCISES.has(name); }
+
 // ════════════════════════════════════════════════════════════════════
 function loadPRView() {
   // Populate exercise selects
@@ -771,6 +779,15 @@ function loadPRView() {
     });
     if (existing) sel.value = existing;
   });
+  // Show/hide "per hand" label when exercise changes
+  const prSel = $('pr-exercise-sel');
+  if (prSel) {
+    prSel.onchange = () => {
+      const label = $('pr-per-hand-label');
+      if (label) label.classList.toggle('hidden', !isDumbbellExercise(prSel.value));
+      $('pr-weight-inp').placeholder = isDumbbellExercise(prSel.value) ? 'Each hand' : 'Weight';
+    };
+  }
   loadMyPRs();
 }
 
@@ -796,7 +813,7 @@ async function loadMyPRs() {
           <div class="pr-exercise-name">${pr.exercise}</div>
           <div class="pr-weight-display">${pr.weight} ${pr.unit}</div>
         </div>
-        <div class="pr-meta">${pr.weight} ${pr.unit} × ${pr.reps} reps · ${formatDate(pr.date)} ${ratioStr}</div>
+        <div class="pr-meta">${pr.weight} ${pr.unit}${pr.perHand ? ' per hand' : ''} × ${pr.reps} reps · ${formatDate(pr.date)} ${ratioStr}</div>
         <span class="pr-level ${lvl.cls}">${lvl.label}</span>
         <div class="pr-caption">${lvl.caption}</div>
       </div>`;
@@ -814,8 +831,10 @@ async function submitPR() {
   const unit = $('pr-unit-sel').value;
   const reps = parseInt($('pr-reps-inp').value);
   if (!exercise || !weight || !reps) { showToast('Fill all fields', 'error'); return; }
-  const est1rm = calc1RM(unit === 'lbs' ? weight * 0.453592 : weight, reps);
-  const pr = { exercise, weight, unit, reps, est1rm, date: todayStr() };
+  const perHand = isDumbbellExercise(exercise);
+  const weightForCalc = perHand ? weight * 2 : weight; // use total for 1RM calc
+  const est1rm = calc1RM(unit === 'lbs' ? weightForCalc * 0.453592 : weightForCalc, reps);
+  const pr = { exercise, weight, unit, reps, est1rm, perHand, date: todayStr() };
   const exId = exercise.replace(/[^a-z0-9]/gi,'_').toLowerCase();
   try {
     await ucol('prs').doc(exId).set(pr);
