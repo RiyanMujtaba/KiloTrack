@@ -154,7 +154,20 @@ function urefWithUID(uid, path) { return db.doc(`users/${uid}/${path}`); }
 
 function showAuthError(msg) {
   const el = $('auth-error');
-  el.textContent = msg.replace('Firebase: ','').replace(/\(auth\/[\w-]+\)/,'').trim();
+  const codeMatch = msg.match(/\(auth\/([\w-]+)\)/);
+  const code = codeMatch ? codeMatch[1] : '';
+  const friendly = {
+    'operation-not-allowed': 'Email/password sign-in is not enabled. Contact the app owner.',
+    'email-already-in-use': 'An account with this email already exists.',
+    'invalid-email': 'Invalid email address.',
+    'weak-password': 'Password must be at least 6 characters.',
+    'user-not-found': 'No account found with this email.',
+    'wrong-password': 'Incorrect password.',
+    'too-many-requests': 'Too many attempts. Try again later.',
+    'popup-closed-by-user': 'Sign-in popup was closed.',
+    'unauthorized-domain': 'This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized domains.',
+  }[code];
+  el.textContent = friendly || msg.replace('Firebase: ','').replace(/\(auth\/[\w-]+\)/,'').trim() || 'Something went wrong.';
   el.classList.remove('hidden');
 }
 function handleLogout() {
