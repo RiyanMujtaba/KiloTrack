@@ -107,21 +107,24 @@ const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','
 const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const PR_EXERCISES = [
-  'Barbell Bench Press','Incline Bench Press','Dumbbell Bench Press',
-  'Back Squat','Front Squat','Goblet Squat',
+  'Barbell Bench Press','Incline Bench Press','Decline Bench Press',
+  'Dumbbell Bench Press','Incline Dumbbell Press','Decline Dumbbell Press',
+  'Back Squat','Front Squat','Goblet Squat','Bulgarian Split Squat',
   'Barbell Deadlift','Romanian Deadlift','Sumo Deadlift',
-  'Overhead Press (Barbell)','Dumbbell Shoulder Press',
-  'Barbell Row','T-Bar Row','Cable Row',
-  'Pull-ups (reps)','Chin-ups (reps)','Dips (reps)',
+  'Overhead Press (Barbell)','Dumbbell Shoulder Press','Arnold Press',
+  'Barbell Row','T-Bar Row','Dumbbell Row','Cable Row',
+  'Pull-ups','Chin-ups','Dips',
   'Lat Pulldown','Leg Press','Leg Extension',
   'Leg Curl','Hip Thrust','Calf Raises',
-  'Bicep Curl (Barbell)','Preacher Curl',
-  'Tricep Pushdown','Skull Crushers','Close Grip Bench'
+  'Bicep Curl (Barbell)','Dumbbell Curl','Hammer Curl','Preacher Curl',
+  'Tricep Pushdown','Skull Crushers','Close Grip Bench','Overhead Tricep Extension',
+  'Lateral Raises','Face Pulls','Shrugs'
 ];
 
 const COMMON_EXERCISES = [
   'Barbell Bench Press','Incline Bench Press','Decline Bench Press','Dumbbell Bench Press',
-  'Incline Dumbbell Press','Dumbbell Flyes','Cable Crossover','Chest Dips','Push-ups',
+  'Incline Dumbbell Press','Decline Dumbbell Press','Dumbbell Flyes','Incline Dumbbell Flyes',
+  'Cable Crossover','Chest Dips','Push-ups','Cable Chest Fly','Pec Deck',
   'Barbell Row','T-Bar Row','Dumbbell Row','Cable Row','Lat Pulldown',
   'Pull-ups','Chin-ups','Barbell Deadlift','Romanian Deadlift','Face Pulls','Hyperextensions',
   'Overhead Press (Barbell)','Dumbbell Shoulder Press','Arnold Press',

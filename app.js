@@ -220,7 +220,8 @@ async function loadProfile() {
     if (snap.exists) {
       S.profile = { unit:'kg', calorieGoal:2000, ...snap.data() };
     } else {
-      S.profile = { name: S.user.email.split('@')[0], unit:'kg', calorieGoal:2000 };
+      const name = S.user.displayName || S.user.email.split('@')[0];
+      S.profile = { name, email: S.user.email, unit:'kg', calorieGoal:2000 };
       await uref('profile').set(S.profile);
     }
     const initial = S.profile.name ? S.profile.name[0].toUpperCase() : '?';
