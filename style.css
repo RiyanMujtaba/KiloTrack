@@ -349,6 +349,8 @@ a { color: var(--accent-light); text-decoration: none; }
 .bar-protein { background: var(--blue); }
 .bar-carbs { background: var(--orange); }
 .bar-fat { background: var(--red); }
+.cal-history-row { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
+.cal-history-row:hover { border-color:var(--accent); }
 .meal-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
 .meal-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
 .meal-header h3 { font-size: 16px; font-weight: 700; flex: 1; }

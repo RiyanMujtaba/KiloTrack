@@ -967,6 +967,61 @@ function loadCalView() {
     S.calData = data;
     renderCalView();
   });
+  // Only show history when viewing today
+  if (S.calDate === todayStr()) loadCalHistory();
+  else { const h = $('cal-history-section'); if (h) h.innerHTML = ''; }
+}
+
+async function loadCalHistory() {
+  const el = $('cal-history-section');
+  if (!el) return;
+  el.innerHTML = `<div class="section-title">Previous Days</div><div style="color:var(--muted);font-size:13px;padding:8px 0">Loading...</div>`;
+  try {
+    // Get last 7 days (excluding today)
+    const days = [];
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      days.push(dateToStr(d));
+    }
+    const snaps = await Promise.all(days.map(ds => ucol('foodLog').doc(ds).get()));
+    const records = snaps.map((snap, i) => ({ date: days[i], data: snap.exists ? snap.data() : null }))
+                         .filter(r => r.data);
+
+    if (!records.length) {
+      el.innerHTML = `<div class="section-title">Previous Days</div><p style="color:var(--muted);font-size:14px">No history yet.</p>`;
+      return;
+    }
+
+    const rows = records.map(r => {
+      const tots = calcTotals(r.data);
+      const goal = S.profile.calorieGoal || 2000;
+      const pct = Math.min(100, Math.round((tots.cal / goal) * 100));
+      const barColor = pct >= 90 ? 'var(--green)' : pct >= 60 ? 'var(--accent)' : 'var(--orange)';
+      return `<div class="cal-history-row" onclick="jumpToCalDay('${r.date}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;font-size:14px">${formatDate(r.date)}</span>
+          <span style="font-weight:800;font-size:15px;color:${barColor}">${tots.cal} kcal</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:100px;height:5px;margin-bottom:6px;overflow:hidden">
+          <div style="height:100%;border-radius:100px;background:${barColor};width:${pct}%"></div>
+        </div>
+        <div style="display:flex;gap:12px;font-size:12px;color:var(--muted)">
+          <span>P: <b style="color:var(--text)">${tots.p}g</b></span>
+          <span>C: <b style="color:var(--text)">${tots.c}g</b></span>
+          <span>F: <b style="color:var(--text)">${tots.f}g</b></span>
+          <span style="margin-left:auto;color:var(--accent-light);font-size:11px">Tap to view →</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `<div class="section-title">Previous Days</div>${rows}`;
+  } catch(e) { el.innerHTML = ''; console.error(e); }
+}
+
+function jumpToCalDay(dateStr) {
+  S.calDate = dateStr;
+  loadCalView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderCalDate() {
