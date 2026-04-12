@@ -1107,18 +1107,46 @@ function selectFood(foodId) {
   const food = FOODS.find(f => f.id === foodId) || (S.customFoods||[]).find(f => f.id === foodId);
   if (!food) return;
   S.selectedFood = food;
+  S.selectedSizeMult = 1;
   $('sf-name').textContent = food.name;
   $('serving-amount-inp').value = 1;
   $('serving-unit-label').textContent = `× ${food.serving}${food.unit}`;
+
+  // Size buttons
+  const sizeRow = $('size-btn-row');
+  if (food.sizes && food.sizes.length) {
+    sizeRow.classList.remove('hidden');
+    sizeRow.style.display = 'flex';
+    sizeRow.innerHTML = food.sizes.map((s, i) =>
+      `<button class="size-btn ${i===1?'active':''}" onclick="selectSize(${s.mult}, this)">${s.label}</button>`
+    ).join('');
+    // default to middle size (index 1) or first if only 2
+    const defaultIdx = food.sizes.length > 2 ? 1 : 0;
+    S.selectedSizeMult = food.sizes[defaultIdx].mult;
+    sizeRow.querySelectorAll('.size-btn')[defaultIdx].classList.add('active');
+    sizeRow.querySelectorAll('.size-btn').forEach((b,i) => { if(i!==defaultIdx) b.classList.remove('active'); });
+  } else {
+    sizeRow.classList.add('hidden');
+    sizeRow.style.display = 'none';
+  }
+
   updateServingPreview();
   $('selected-food-panel').classList.remove('hidden');
   $('food-search-results').innerHTML = '';
 }
 
+function selectSize(mult, btn) {
+  S.selectedSizeMult = mult;
+  $('size-btn-row').querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateServingPreview();
+}
+
 function updateServingPreview() {
   if (!S.selectedFood) return;
   const servings = parseFloat($('serving-amount-inp').value) || 1;
-  const amount = servings * S.selectedFood.serving;
+  const sizeMult = S.selectedSizeMult || 1;
+  const amount = servings * S.selectedFood.serving * sizeMult;
   const n = calcNutrition(S.selectedFood, amount);
   $('sf-macros').innerHTML = `
     <div class="sf-macro"><div class="sf-macro-val">${n.cal}</div><div class="sf-macro-label">kcal</div></div>
@@ -1130,9 +1158,14 @@ function updateServingPreview() {
 async function addSelectedFood() {
   if (!S.selectedFood) return;
   const servings = parseFloat($('serving-amount-inp').value) || 1;
-  const amount = servings * S.selectedFood.serving;
+  const sizeMult = S.selectedSizeMult || 1;
+  const amount = servings * S.selectedFood.serving * sizeMult;
   const n = calcNutrition(S.selectedFood, amount);
-  const servingLabel = servings === 1 ? `1 serving` : `${servings} servings`;
+  // Build label
+  const sizeLabel = S.selectedFood.sizes && sizeMult !== 1
+    ? (S.selectedFood.sizes.find(s => s.mult === sizeMult)?.label || '')
+    : '';
+  const servingLabel = servings === 1 ? (sizeLabel || '1 serving') : `${servings}× ${sizeLabel || 'serving'}`;
   const entry = { name: `${S.selectedFood.name} (${servingLabel})`, ...n };
   await addToMeal(entry);
 }

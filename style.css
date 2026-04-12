@@ -423,6 +423,8 @@ a { color: var(--accent-light); text-decoration: none; }
 .sf-macro { background: var(--surface2); border-radius: 8px; padding: 8px; }
 .sf-macro-val { font-weight: 800; font-size: 16px; }
 .sf-macro-label { font-size: 11px; color: var(--muted); }
+.size-btn { flex:1; padding:9px 6px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--muted); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+.size-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
 .serving-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .serving-row label { font-size: 14px; color: var(--muted); }
 .serving-row input { width: 80px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); }
