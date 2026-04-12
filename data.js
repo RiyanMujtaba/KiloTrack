@@ -29,6 +29,12 @@ const FOODS = [
   { id:'pasta', name:'Pasta (cooked)', cal:158, p:5.8, f:0.9, c:31, serving:100, unit:'g', cat:'grain', sizes:[{label:'Small',mult:1.5},{label:'Medium',mult:2.5},{label:'Large',mult:4}] },
   { id:'white_bread', name:'White Bread (1 slice)', cal:79, p:2.7, f:1, c:15, serving:30, unit:'g', cat:'grain' },
   { id:'ww_bread', name:'Whole Wheat Bread (1 slice)', cal:80, p:4, f:1, c:15, serving:35, unit:'g', cat:'grain' },
+  { id:'tortilla_flour', name:'Flour Tortilla (1 piece)', cal:146, p:4, f:3.5, c:25, serving:45, unit:'g', cat:'grain' },
+  { id:'tortilla_corn', name:'Corn Tortilla (1 piece)', cal:62, p:1.5, f:0.8, c:13, serving:26, unit:'g', cat:'grain' },
+  { id:'wrap', name:'Wrap / Flatbread (1 piece)', cal:130, p:4, f:2.5, c:24, serving:40, unit:'g', cat:'grain' },
+  { id:'pita', name:'Pita Bread (1 piece)', cal:165, p:5.5, f:0.7, c:33, serving:60, unit:'g', cat:'grain' },
+  { id:'bagel', name:'Bagel (1 whole)', cal:270, p:10, f:1.5, c:55, serving:105, unit:'g', cat:'grain' },
+  { id:'rice_vermicelli', name:'Rice Vermicelli / Seviyan (cooked)', cal:109, p:2, f:0.2, c:25, serving:100, unit:'g', cat:'grain' },
   { id:'potato', name:'Potato (boiled)', cal:87, p:1.9, f:0.1, c:20, serving:100, unit:'g', cat:'grain' },
   { id:'sweet_potato', name:'Sweet Potato (boiled)', cal:76, p:1.6, f:0.1, c:18, serving:100, unit:'g', cat:'grain' },
   // PAKISTANI FOODS
