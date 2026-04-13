@@ -624,19 +624,25 @@ async function loadGymView() {
 //  GYM SETUP WIZARD
 // ════════════════════════════════════════════════════════════════════
 function initSetupWizard() {
-  // Pre-populate wizard with existing split if editing
   if (S.gymSetup && S.gymSetup.trainingDays && S.gymSetup.trainingDays.length > 0) {
     const tds = S.gymSetup.trainingDays;
     S.setup.numDays = tds.length;
     S.setup.selectedDOWs = tds.map(d => d.dayOfWeek);
     S.setup.trainingDays = JSON.parse(JSON.stringify(tds));
-    // Mark the correct day count button active
-    document.querySelectorAll('.day-count-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt(btn.dataset.days) === S.setup.numDays);
-    });
   } else {
     S.setup = { numDays: 4, selectedDOWs: [], trainingDays: [] };
   }
+  // Sync day-count buttons
+  document.querySelectorAll('.day-option-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.days) === S.setup.numDays);
+  });
+  // Sync weekday buttons
+  document.querySelectorAll('.weekday-btn').forEach(btn => {
+    btn.classList.toggle('selected', S.setup.selectedDOWs.includes(parseInt(btn.dataset.dow)));
+  });
+  // Sync hint text
+  const hint = $('days-select-hint');
+  if (hint) hint.textContent = `${S.setup.selectedDOWs.length} / ${S.setup.numDays} days selected`;
   setupGoTo(1);
 }
 
