@@ -704,12 +704,11 @@ document.querySelectorAll('.weekday-btn').forEach(btn => {
 });
 
 function buildDayConfigs() {
-  // Sort DOWs to standard order
   const sorted = [...S.setup.selectedDOWs].sort((a,b)=>a-b);
-  // Preserve existing data if re-entering
+  const prev = S.setup.trainingDays.slice(); // snapshot before overwriting
   S.setup.trainingDays = sorted.map((dow, i) => {
-    const existing = S.setup.trainingDays.find(td => td.dayOfWeek === dow);
-    return existing || { dayOfWeek: dow, name: `Day ${i+1}`, muscles: [], exercises: [] };
+    const existing = prev.find(td => parseInt(td.dayOfWeek) === parseInt(dow));
+    return existing ? JSON.parse(JSON.stringify(existing)) : { dayOfWeek: dow, name: DAY_NAMES[dow], muscles: [], exercises: [] };
   });
 
   const container = $('day-configs');
