@@ -14,7 +14,9 @@ const FIREBASE_CONFIG = {
 function getGroqKey() {
   return localStorage.getItem('groq_api_key') || '';
 }
-const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Llama 4 Maverick — Groq's most capable vision model, noticeably more
+// accurate at food recognition & portion/macro estimation than Scout.
+const GROQ_MODEL = 'meta-llama/llama-4-maverick-17b-128e-instruct';
 
 // ── INIT ─────────────────────────────────────────────────────────────
 firebase.initializeApp(FIREBASE_CONFIG);
@@ -1241,75 +1243,174 @@ async function addToMeal(entry) {
 }
 
 // ── PHOTO ANALYSIS ────────────────────────────────────────────────
+let _pendingPhotoFile = null;
+
 async function handleFoodPhoto(event) {
   const file = event.target.files[0];
   if (!file) return;
   event.target.value = ''; // reset input
+  // No key yet → show the clean key card instead of a jarring prompt()
+  if (!getGroqKey()) {
+    _pendingPhotoFile = file;
+    showPhotoKeyCard();
+    return;
+  }
+  runPhotoAnalysis(file);
+}
+
+async function runPhotoAnalysis(file) {
   $('photo-input-section').classList.add('hidden');
+  $('photo-key-section')?.classList.add('hidden');
   $('photo-result-section').classList.add('hidden');
-  // Preview
-  const reader = new FileReader();
-  reader.onload = e => {
-    $('photo-preview-img').src = e.target.result;
+  let dataUrl;
+  try {
+    dataUrl = await downscaleImage(file);
+  } catch { dataUrl = null; }
+  if (dataUrl) {
+    $('photo-preview-img').src = dataUrl;
     $('photo-preview-section').classList.remove('hidden');
-  };
-  reader.readAsDataURL(file);
+  }
   $('photo-analyzing-section').classList.remove('hidden');
   try {
-    const base64 = await fileToBase64(file);
-    const result = await analyzeImageWithGroq(base64);
+    const result = await analyzeImageWithGroq(dataUrl);
+    if (!result.items.length) throw new Error('No food detected');
     S.photoResult = result;
     $('photo-analyzing-section').classList.add('hidden');
     renderPhotoResult(result);
   } catch(err) {
     $('photo-analyzing-section').classList.add('hidden');
-    showToast('Could not analyse photo. Try again.', 'error');
-    $('photo-input-section').classList.remove('hidden');
+    $('photo-preview-section').classList.add('hidden');
     console.error('photo analysis', err);
+    if (err.message === 'BAD_KEY' || err.message === 'NO_KEY') {
+      localStorage.removeItem('groq_api_key');
+      _pendingPhotoFile = file;
+      showPhotoKeyCard(err.message === 'BAD_KEY' ? 'That key was rejected — check it and try again.' : '');
+    } else if (err.message === 'No food detected') {
+      showToast("Couldn't spot any food in that photo 🤔", 'error');
+      $('photo-input-section').classList.remove('hidden');
+    } else {
+      showToast('Could not analyse photo. Try again.', 'error');
+      $('photo-input-section').classList.remove('hidden');
+    }
   }
 }
 
-function fileToBase64(file) {
+function showPhotoKeyCard(msg) {
+  $('photo-input-section').classList.add('hidden');
+  $('photo-preview-section').classList.add('hidden');
+  $('photo-result-section').classList.add('hidden');
+  const err = $('photo-key-error');
+  if (err) { err.textContent = msg || ''; err.style.display = msg ? 'block' : 'none'; }
+  const inp = $('photo-key-input');
+  if (inp) inp.value = getGroqKey();
+  $('photo-key-section')?.classList.remove('hidden');
+}
+
+function savePhotoKey() {
+  const inp = $('photo-key-input');
+  const k = (inp?.value || '').trim();
+  if (!k) { showToast('Paste your Groq key first', 'error'); return; }
+  localStorage.setItem('groq_api_key', k);
+  $('photo-key-section')?.classList.add('hidden');
+  if (_pendingPhotoFile) {
+    const f = _pendingPhotoFile; _pendingPhotoFile = null;
+    runPhotoAnalysis(f);
+  } else {
+    $('photo-input-section').classList.remove('hidden');
+    showToast('AI key saved 🔑', 'success');
+  }
+}
+
+// Downscale + compress before upload: faster, cheaper, well within model
+// limits, and accuracy is unaffected at ~1024px. Returns a clean JPEG dataURL.
+function downscaleImage(file, maxDim = 1024, quality = 0.85) {
   return new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = e => {
-      const b64 = e.target.result.split(',')[1];
-      res(b64);
+      const img = new Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        if (Math.max(w, h) > maxDim) {
+          const s = maxDim / Math.max(w, h);
+          w = Math.round(w * s); h = Math.round(h * s);
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        res(c.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = rej;
+      img.src = e.target.result;
     };
     r.onerror = rej;
     r.readAsDataURL(file);
   });
 }
 
-async function analyzeImageWithGroq(base64) {
-  const key = getGroqKey();
-  if (!key) {
-    const k = prompt('Enter your Groq API key (saved locally, never uploaded):');
-    if (!k) throw new Error('No API key provided');
-    localStorage.setItem('groq_api_key', k.trim());
-  }
+const PHOTO_SYSTEM_PROMPT =
+`You are a meticulous nutrition analyst specialising in food photo estimation, including South-Asian / Pakistani cuisine (biryani, karahi, daal, roti, naan, nihari, haleem, pulao, samosa, paratha, chai, etc.).
+
+Analyse the photo and follow this method EXACTLY:
+1. Identify EVERY edible item in the frame — main dishes, sides, breads, rice, sauces, chutneys, garnishes, salad, drinks. Miss nothing.
+2. Break composite dishes into their real components when it matters (e.g. "Chicken Biryani" = rice + chicken + oil/ghee; a "burger" = bun + patty + cheese + sauce). Report the dish name but base macros on the whole thing.
+3. Estimate the PORTION for each item in grams (or ml for drinks) using visual cues — plate size (~26cm dinner plate), utensils, hand, standard serving sizes. State the portion clearly.
+4. Factor in the cooking method: fried / ghee / oily foods carry much more fat and calories than grilled or boiled. Desi curries usually have significant oil.
+5. Compute calories, protein, fat and carbs for the ESTIMATED portion — not per 100g. Use realistic nutrition densities.
+6. "total" MUST equal the sum of all items (recheck your addition).
+
+Return ONLY a JSON object, no prose, no markdown:
+{"items":[{"name":"string","portion":"e.g. 250g / 1 medium / 300ml","calories":0,"protein":0,"fat":0,"carbs":0}],"total":{"calories":0,"protein":0,"fat":0,"carbs":0},"confidence":"high|medium|low","note":"short caveat if the estimate is uncertain, else empty"}
+All macro values are numbers in grams; calories in kcal; round to whole numbers.`;
+
+async function analyzeImageWithGroq(dataUrl) {
+  if (!getGroqKey()) throw new Error('NO_KEY');
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${getGroqKey()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: GROQ_MODEL,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
-          { type: 'text', text: `Analyze this food image carefully. Identify every food item you can see and estimate their nutritional content accurately for the portions shown. Return ONLY a valid JSON object, no other text: {"items":[{"name":"food name","calories":0,"protein":0,"fat":0,"carbs":0,"portion":"e.g. 1 cup or 200g"}],"total":{"calories":0,"protein":0,"fat":0,"carbs":0}}` }
-        ]
-      }],
-      max_tokens: 800,
-      temperature: 0.1
+      temperature: 0.15,
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: PHOTO_SYSTEM_PROMPT },
+        { role: 'user', content: [
+          { type: 'image_url', image_url: { url: dataUrl } },
+          { type: 'text', text: 'Analyse this meal and return the JSON. Be exhaustive and realistic about portions and oil/fat.' }
+        ] }
+      ]
     })
   });
+  if (resp.status === 401) throw new Error('BAD_KEY');
   if (!resp.ok) throw new Error(`Groq API error ${resp.status}`);
   const data = await resp.json();
-  const text = data.choices[0].message.content;
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('No JSON in response');
-  return JSON.parse(match[0]);
+  const text = data.choices?.[0]?.message?.content || '';
+  let parsed;
+  try { parsed = JSON.parse(text); }
+  catch {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('No JSON in response');
+    parsed = JSON.parse(m[0]);
+  }
+  return normalizePhotoResult(parsed);
+}
+
+// Coerce values to numbers and recompute totals from items so the summary
+// always adds up, even if the model's own total drifts.
+function normalizePhotoResult(r) {
+  const num = v => Math.max(0, Math.round(Number(v) || 0));
+  const items = (r.items || []).map(i => ({
+    name: (i.name || 'Item').toString().trim(),
+    portion: (i.portion || '').toString().trim(),
+    calories: num(i.calories), protein: num(i.protein),
+    fat: num(i.fat), carbs: num(i.carbs)
+  })).filter(i => i.calories || i.protein || i.fat || i.carbs);
+  const total = items.reduce((t, i) => ({
+    calories: t.calories + i.calories, protein: t.protein + i.protein,
+    fat: t.fat + i.fat, carbs: t.carbs + i.carbs
+  }), { calories:0, protein:0, fat:0, carbs:0 });
+  return { items, total, confidence: r.confidence || '', note: (r.note || '').toString().trim() };
 }
 
 function renderPhotoResult(result) {
@@ -1317,17 +1418,26 @@ function renderPhotoResult(result) {
   const tot = result.total || { calories:0, protein:0, fat:0, carbs:0 };
   $('photo-detected-items').innerHTML = items.map(item => `
     <div class="photo-result-item">
-      <span>${item.name} <span style="color:var(--muted);font-size:12px">(${item.portion})</span></span>
-      <span style="font-weight:700;color:var(--accent-light)">${item.calories} kcal</span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span style="font-weight:600">${item.name}${item.portion ? ` <span style="color:var(--muted);font-size:12px;font-weight:400">· ${item.portion}</span>` : ''}</span>
+        <span style="font-size:11px;color:var(--muted)">P ${item.protein}g · C ${item.carbs}g · F ${item.fat}g</span>
+      </div>
+      <span style="font-weight:700;color:var(--accent-light);white-space:nowrap">${item.calories} kcal</span>
     </div>`).join('');
+  const conf = result.confidence
+    ? `<span style="font-size:11px;color:var(--muted);text-transform:capitalize">${result.confidence} confidence</span>` : '';
   $('photo-totals-box').innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px">Total</div>
-    <div style="display:flex;gap:16px;font-size:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-weight:700">Total</span>${conf}
+    </div>
+    <div style="display:flex;gap:16px;font-size:14px;flex-wrap:wrap">
       <span style="font-weight:800;font-size:18px;color:var(--accent-light)">${tot.calories} kcal</span>
       <span style="color:var(--blue)">P:${tot.protein}g</span>
       <span style="color:var(--orange)">C:${tot.carbs}g</span>
       <span style="color:var(--red)">F:${tot.fat}g</span>
-    </div>`;
+    </div>
+    ${result.note ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">⚠️ ${result.note}</div>` : ''}
+    <div style="margin-top:8px;font-size:11px;color:var(--muted)">Tip: numbers are AI estimates — tap Edit to fine-tune.</div>`;
   $('photo-result-section').classList.remove('hidden');
   // Pre-fill custom form in case user wants to edit
   $('custom-name').value = items.map(i=>i.name).join(', ') || 'Photo meal';

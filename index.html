@@ -388,6 +388,17 @@
           </div>
           <p style="text-align:center;font-size:13px;color:var(--muted)">AI will identify the food and calculate macros</p>
         </div>
+        <div id="photo-key-section" class="hidden">
+          <div class="photo-key-card">
+            <div class="photo-key-icon">🔑</div>
+            <h4>Connect the AI vision model</h4>
+            <p>Photo analysis runs on Groq's free Llama 4 vision model. Paste a free API key once — it's saved on this device only and never uploaded anywhere.</p>
+            <input type="password" id="photo-key-input" class="form-input" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+            <p id="photo-key-error" style="display:none;color:var(--red);font-size:12px;margin:0"></p>
+            <button class="btn-primary" onclick="savePhotoKey()">Save & Analyse</button>
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="photo-key-link">Get a free Groq key →</a>
+          </div>
+        </div>
         <div id="photo-preview-section" class="hidden">
           <div class="photo-preview-box"><img id="photo-preview-img" src="" alt="food"></div>
         </div>

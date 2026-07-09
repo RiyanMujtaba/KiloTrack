@@ -441,6 +441,17 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 .photo-btn-label:hover { border-color: var(--accent); color: var(--accent-light); }
 .photo-btn-label .photo-icon { font-size: 32px; }
+.photo-key-card {
+  display: flex; flex-direction: column; gap: 12px; text-align: center;
+  padding: 24px 20px; border-radius: 16px;
+  background: var(--surface2); border: 1px solid var(--border);
+}
+.photo-key-icon { font-size: 34px; }
+.photo-key-card h4 { font-size: 16px; font-weight: 700; }
+.photo-key-card p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+.photo-key-card .form-input { text-align: center; }
+.photo-key-card .btn-primary { margin-top: 2px; }
+.photo-key-link { font-size: 13px; font-weight: 600; color: var(--accent-light); }
 .photo-preview-box { border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
 .photo-preview-box img { width: 100%; max-height: 200px; object-fit: cover; }
 .analyzing-box { text-align: center; padding: 28px; color: var(--muted); }
