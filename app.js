@@ -1289,7 +1289,8 @@ async function runPhotoAnalysis(file) {
       showToast("Couldn't spot any food in that photo 🤔", 'error');
       $('photo-input-section').classList.remove('hidden');
     } else {
-      showToast('Could not analyse photo. Try again.', 'error');
+      const reason = (err && err.message) ? err.message : 'Unknown error';
+      showToast('Analyse failed — ' + reason, 'error');
       $('photo-input-section').classList.remove('hidden');
     }
   }
@@ -1363,29 +1364,57 @@ Return ONLY a JSON object, no prose, no markdown:
 {"items":[{"name":"string","portion":"e.g. 250g / 1 medium / 300ml","calories":0,"protein":0,"fat":0,"carbs":0}],"total":{"calories":0,"protein":0,"fat":0,"carbs":0},"confidence":"high|medium|low","note":"short caveat if the estimate is uncertain, else empty"}
 All macro values are numbers in grams; calories in kcal; round to whole numbers.`;
 
-async function analyzeImageWithGroq(dataUrl) {
-  if (!getGroqKey()) throw new Error('NO_KEY');
+// Try the most capable vision model first, fall back to the known-good one
+// if it's unavailable on the account/region.
+const GROQ_VISION_MODELS = [
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+  'meta-llama/llama-4-scout-17b-16e-instruct'
+];
+
+async function callGroqVision(model, dataUrl) {
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${getGroqKey()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: GROQ_MODEL,
+      model,
       temperature: 0.15,
       max_tokens: 2000,
-      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: PHOTO_SYSTEM_PROMPT },
         { role: 'user', content: [
           { type: 'image_url', image_url: { url: dataUrl } },
-          { type: 'text', text: 'Analyse this meal and return the JSON. Be exhaustive and realistic about portions and oil/fat.' }
+          { type: 'text', text: 'Analyse this meal and return ONLY the JSON object. Be exhaustive and realistic about portions and oil/fat.' }
         ] }
       ]
     })
   });
-  if (resp.status === 401) throw new Error('BAD_KEY');
-  if (!resp.ok) throw new Error(`Groq API error ${resp.status}`);
+  if (resp.status === 401 || resp.status === 403) throw new Error('BAD_KEY');
+  if (!resp.ok) {
+    let detail = '';
+    try { const e = await resp.json(); detail = e.error?.message || ''; } catch {}
+    const err = new Error(`Groq ${resp.status}${detail ? ': ' + detail : ''}`);
+    err.status = resp.status; err.detail = detail;
+    throw err;
+  }
   const data = await resp.json();
-  const text = data.choices?.[0]?.message?.content || '';
+  return data.choices?.[0]?.message?.content || '';
+}
+
+async function analyzeImageWithGroq(dataUrl) {
+  if (!getGroqKey()) throw new Error('NO_KEY');
+  let text = '', lastErr = null;
+  for (const model of GROQ_VISION_MODELS) {
+    try { text = await callGroqVision(model, dataUrl); lastErr = null; break; }
+    catch (e) {
+      if (e.message === 'BAD_KEY') throw e;          // key problem — don't retry
+      // model missing/decommissioned → try the next model; otherwise bail
+      const retryable = e.status === 400 || e.status === 404 ||
+        /model|decommission|not found|does not exist/i.test(e.detail || '');
+      lastErr = e;
+      if (!retryable) throw e;
+    }
+  }
+  if (lastErr) throw lastErr;
   let parsed;
   try { parsed = JSON.parse(text); }
   catch {
