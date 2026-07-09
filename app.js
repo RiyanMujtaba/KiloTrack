@@ -11,6 +11,12 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "792372294847",
   appId: "1:792372294847:web:eba281f7685e84660e020a"
 };
+// When set to your Cloudflare Worker URL, photo analysis goes through the
+// proxy (one shared key, server-side) and NO user is ever asked for a key.
+// Leave '' to fall back to the per-device bring-your-own-key mode.
+const GROQ_PROXY_URL = '';
+
+function usingProxy() { return !!GROQ_PROXY_URL; }
 function getGroqKey() {
   return localStorage.getItem('groq_api_key') || '';
 }
@@ -1249,8 +1255,8 @@ async function handleFoodPhoto(event) {
   const file = event.target.files[0];
   if (!file) return;
   event.target.value = ''; // reset input
-  // No key yet → show the clean key card instead of a jarring prompt()
-  if (!getGroqKey()) {
+  // With the proxy on, nobody needs a key. Otherwise show the key card once.
+  if (!usingProxy() && !getGroqKey()) {
     _pendingPhotoFile = file;
     showPhotoKeyCard();
     return;
@@ -1372,9 +1378,12 @@ const GROQ_VISION_MODELS = [
 ];
 
 async function callGroqVision(model, dataUrl) {
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const endpoint = usingProxy() ? GROQ_PROXY_URL : 'https://api.groq.com/openai/v1/chat/completions';
+  const headers = { 'Content-Type': 'application/json' };
+  if (!usingProxy()) headers['Authorization'] = `Bearer ${getGroqKey()}`;
+  const resp = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${getGroqKey()}`, 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       model,
       temperature: 0.15,
@@ -1401,7 +1410,7 @@ async function callGroqVision(model, dataUrl) {
 }
 
 async function analyzeImageWithGroq(dataUrl) {
-  if (!getGroqKey()) throw new Error('NO_KEY');
+  if (!usingProxy() && !getGroqKey()) throw new Error('NO_KEY');
   let text = '', lastErr = null;
   for (const model of GROQ_VISION_MODELS) {
     try { text = await callGroqVision(model, dataUrl); lastErr = null; break; }
