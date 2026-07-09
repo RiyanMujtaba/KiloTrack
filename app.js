@@ -14,7 +14,7 @@ const FIREBASE_CONFIG = {
 // When set to your Cloudflare Worker URL, photo analysis goes through the
 // proxy (one shared key, server-side) and NO user is ever asked for a key.
 // Leave '' to fall back to the per-device bring-your-own-key mode.
-const GROQ_PROXY_URL = '';
+const GROQ_PROXY_URL = 'https://kilotrack.mujtabariyan91.workers.dev';
 
 function usingProxy() { return !!GROQ_PROXY_URL; }
 function getGroqKey() {
